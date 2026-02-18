@@ -1,0 +1,45 @@
+services:
+  agente-comercial-init:
+    image: pgvector/pgvector:pg17
+    environment:
+      - TZ=America/Bahia
+      - PGPASSWORD=3acDZwaNJwPcpozU
+    command:
+      - sh
+      - -c
+      - |
+        echo '=== Aguardando PostgreSQL ==='
+        until pg_isready -h postgres -U postgres; do sleep 2; done
+
+        echo '=== Criando database agente_comercial ==='
+        psql -h postgres -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'agente_comercial'" | grep -q 1 || psql -h postgres -U postgres -c "CREATE DATABASE agente_comercial ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' TEMPLATE template0"
+
+        echo '=== Criando user agente_comercial ==='
+        psql -h postgres -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname = 'agente_comercial'" | grep -q 1 || psql -h postgres -U postgres -c "CREATE USER agente_comercial WITH PASSWORD '3acDZwaNJwPcpozU'"
+
+        echo '=== Concedendo privilégios ==='
+        psql -h postgres -U postgres -c 'GRANT ALL PRIVILEGES ON DATABASE agente_comercial TO agente_comercial'
+        psql -h postgres -U postgres -d agente_comercial -c 'GRANT ALL ON SCHEMA public TO agente_comercial'
+        psql -h postgres -U postgres -d agente_comercial -c 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO agente_comercial'
+        psql -h postgres -U postgres -d agente_comercial -c 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO agente_comercial'
+        psql -h postgres -U postgres -d agente_comercial -c 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO agente_comercial'
+
+        echo '=== Criando extensões ==='
+        psql -h postgres -U postgres -d agente_comercial -c 'CREATE EXTENSION IF NOT EXISTS pgcrypto'
+        psql -h postgres -U postgres -d agente_comercial -c 'CREATE EXTENSION IF NOT EXISTS vector'
+        psql -h postgres -U postgres -d agente_comercial -c 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements'
+
+        echo '=== Init agente_comercial concluído com sucesso ==='
+    networks:
+      - network_public
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: none
+      placement:
+        constraints:
+          - node.role == manager
+networks:
+  network_public:
+    external: true
