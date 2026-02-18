@@ -169,6 +169,72 @@ Cada provedor possui um `chatwoot_inbox_id` no campo `config_bot` (JSONB). O flu
 | `vw_conversas` | Conversas formatadas com remetente identificado |
 | `vw_resumo_provedores` | Dashboard por provedor com métricas |
 
+## Backup e Restauração
+
+O projeto inclui scripts profissionais de backup e restauração com compressão, rotação automática, validação de integridade, notificação via Telegram e agendamento via cron.
+
+### Backup
+
+```bash
+# Backup padrão (salva em /storage/backups/agente_comercial/)
+sudo bash scripts/backup.sh
+
+# Backup com diretório customizado e 30 dias de retenção
+sudo bash scripts/backup.sh --dir /mnt/backup --retencao 30
+
+# Backup com notificação Telegram
+sudo bash scripts/backup.sh --telegram SEU_BOT_TOKEN SEU_CHAT_ID
+
+# Instalar backup automático diário às 3h da manhã
+sudo bash scripts/backup.sh --instalar-cron
+
+# Instalar com horário customizado
+sudo bash scripts/backup.sh --instalar-cron --cron-hora 02:30
+
+# Listar backups existentes
+sudo bash scripts/backup.sh --listar
+
+# Remover agendamento
+sudo bash scripts/backup.sh --remover-cron
+```
+
+| Opção | Descrição |
+|-------|----------|
+| `--dir CAMINHO` | Diretório de destino dos backups |
+| `--retencao DIAS` | Dias de retenção (padrão: 7) |
+| `--pg-senha SENHA` | Senha do PostgreSQL |
+| `--telegram TOKEN ID` | Habilita notificação Telegram |
+| `--instalar-cron` | Instala agendamento cron |
+| `--cron-hora HH:MM` | Hora do backup automático (padrão: 03:00) |
+| `--remover-cron` | Remove o agendamento |
+| `--listar` | Lista backups com tamanhos |
+
+### Restauração
+
+```bash
+# Modo interativo (lista backups e permite escolher)
+sudo bash scripts/restore.sh
+
+# Restaurar o backup mais recente
+sudo bash scripts/restore.sh --ultimo
+
+# Restaurar arquivo específico
+sudo bash scripts/restore.sh --arquivo /storage/backups/agente_comercial/agente_comercial_2026-02-18_03-00-00.sql.gz
+
+# Restauração automática (sem confirmação, para scripts)
+sudo bash scripts/restore.sh --ultimo --force
+```
+
+| Opção | Descrição |
+|-------|----------|
+| `--arquivo CAMINHO` | Restaura de um arquivo .sql.gz específico |
+| `--ultimo` | Restaura o backup mais recente |
+| `--dir CAMINHO` | Diretório onde estão os backups |
+| `--sem-backup-previo` | Pula o backup de segurança antes de restaurar |
+| `--force` | Pula confirmação interativa |
+
+O script de restauração faz automaticamente um **backup de segurança** antes de restaurar (salvo em `pre-restore/`), recria o database limpo, aplica o dump e restaura todas as permissões do user `agente_comercial`.
+
 ## Estrutura de Arquivos
 
 ```
@@ -176,7 +242,9 @@ agent_comercial/
 ├── README.md
 ├── scripts/
 │   ├── deploy-database.sh          # Deploy principal via docker exec
-│   └── deploy-via-portainer.sh     # Deploy alternativo via Portainer API
+│   ├── deploy-via-portainer.sh     # Deploy alternativo via Portainer API
+│   ├── backup.sh                   # Backup com compressão, rotação e cron
+│   └── restore.sh                  # Restauração interativa ou automática
 ├── sql/
 │   ├── 01_ddl.sql                  # Tabelas, índices, FKs, triggers
 │   ├── 02_dados.sql                # Provedores, planos, leads, mensagens
